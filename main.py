@@ -1,4 +1,6 @@
-import sys, time
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+import sys, time, pynotify
 import pygame, pygame.camera
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -11,6 +13,8 @@ class SetupWindow(QDialog):
         numberOfPicturesContainer = QHBoxLayout()
         self.inputTimeDelay = QSpinBox();
         self.inputNumberOfPictures = QSpinBox()
+        self.inputNumberOfPictures.setRange(0,1000)
+        self.notificationsRadio = QRadioButton(QString("Display Notification"))
         self.submitButton = QPushButton('Set Variables')
         delayContainer.addWidget(QLabel("Input Delay:"))
         delayContainer.addWidget(self.inputTimeDelay)
@@ -18,21 +22,25 @@ class SetupWindow(QDialog):
         numberOfPicturesContainer.addWidget(self.inputNumberOfPictures)
         container.addLayout(delayContainer)
         container.addLayout(numberOfPicturesContainer)
+        container.addWidget(self.notificationsRadio)
         container.addWidget(self.submitButton)
         self.setWindowTitle("Setup")
         self.setLayout(container)
         self.submitButton.clicked.connect(self.submitValues)
+        self.move(QApplication.desktop().screen().rect().center()- (self.rect().center())/2)
         self.show()
     def submitValues(self):
+        areNotifications = self.notificationsRadio.isChecked()
         numOfPictures = self.inputNumberOfPictures.value()
         delay = self.inputTimeDelay.value()
-        pictureInst = PictureDameon(delay, numOfPictures)
+        pictureInst = PictureDameon(delay, numOfPictures, areNotifications)
         self.hide()
         pictureInst.start()
 
 class PictureDameon:
-    def __init__(self, delay, numOfPictures):
+    def __init__(self, delay, numOfPictures, areNotifications):
         self.delay = delay
+        self.areNotifications = areNotifications
         self.numOfPictures = numOfPictures
         self.camera = CameraPicture()
     def start(self):
@@ -42,10 +50,16 @@ class PictureDameon:
     def takePicture(self):
         for i in range(0, self.numOfPictures):
             print "taking picture"
+            if self.areNotifications is True:
+                self.deployNotification()
             self.camera.takePicture()
             self.camera.savePicture()
-            time.sleep(1)
         self.start()
+    def deployNotification(self):
+        pynotify.init("Taking A Picture")
+        notification = pynotify.Notification("Taking a picture")
+        notification.show()
+
 
 class CameraPicture:
     def  __init__(self):
